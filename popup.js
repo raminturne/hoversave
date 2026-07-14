@@ -16,6 +16,7 @@ const els = {
   statusDot: $('statusDot'),
   keyInput: $('keyInput'),
   pickFolder: $('pickFolder'),
+  autoSubfolder: $('autoSubfolder'),
   folderTipOverlay: $('folderTipOverlay'),
   dontShowTip: $('dontShowTip'),
   tipCancel: $('tipCancel'),
@@ -78,13 +79,14 @@ function setExtensionStatus(enabled) {
 }
 
 async function loadSettings() {
-  const data = await chrome.storage.sync.get(['saveKey', 'enabled']);
+  const data = await chrome.storage.sync.get(['saveKey', 'enabled', 'autoSubfolder']);
   const key = (data.saveKey || 's').toUpperCase();
   els.keyInput.value = key;
   els.footerKey.textContent = key;
   const enabled = data.enabled !== false;
   els.enabled.checked = enabled;
   setExtensionStatus(enabled);
+  els.autoSubfolder.checked = data.autoSubfolder !== false;
 
   try {
     els.verTag.textContent = 'v' + chrome.runtime.getManifest().version;
@@ -117,6 +119,10 @@ els.enabled.addEventListener('change', async () => {
   const next = els.enabled.checked;
   await chrome.storage.sync.set({ enabled: next });
   setExtensionStatus(next);
+});
+
+els.autoSubfolder.addEventListener('change', async () => {
+  await chrome.storage.sync.set({ autoSubfolder: els.autoSubfolder.checked });
 });
 
 els.keyInput.addEventListener('focus', () => {
@@ -171,14 +177,16 @@ async function doPickFolder() {
       return;
     }
 
-    // Always save into a "HoverSave" subfolder of whatever the user picked,
-    // creating it if needed, so they never have to make one themselves.
+    // If enabled, save into a "HoverSave" subfolder of whatever the user
+    // picked (creating it if needed) instead of the picked folder itself.
     // The subfolder inherits the permission grant given above.
     let handle = picked;
-    try {
-      handle = await picked.getDirectoryHandle('HoverSave', { create: true });
-    } catch (e) {
-      console.warn('[hoversave] could not create HoverSave subfolder, using picked folder directly:', e);
+    if (els.autoSubfolder.checked) {
+      try {
+        handle = await picked.getDirectoryHandle('HoverSave', { create: true });
+      } catch (e) {
+        console.warn('[hoversave] could not create HoverSave subfolder, using picked folder directly:', e);
+      }
     }
 
     try {

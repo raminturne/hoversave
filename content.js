@@ -5,7 +5,6 @@
 
 (() => {
   const INDICATOR_ID = 'hoversave-indicator';
-  const BADGE_ID = 'hoversave-badge';
   const DEFAULT_KEY = 's';
 
   let currentImage = null;
@@ -14,7 +13,6 @@
   let indicator = null;
   let hideTimer = null;
   let enabled = true;
-  let badge = null;
 
   // ---------- Mapping: stored character -> physical KeyboardEvent.code ----------
   // Letter a-z / A-Z -> KeyA..KeyZ
@@ -42,7 +40,6 @@
           saveKeyCode = 'KeyS';
         }
         enabled = data && data.enabled === false ? false : true;
-        updateBadge();
       });
     } catch (e) {
       // chrome.storage may be unavailable in some contexts
@@ -66,7 +63,6 @@
         currentImage = null;
         const el = ensureIndicator();
         el.style.display = 'none';
-        updateBadge();
       }
     });
   } catch {}
@@ -115,30 +111,6 @@
       el.style.display = 'none';
       hideTimer = null;
     }, 180);
-  }
-
-  // ---------- "OFF" badge (only visible when disabled) ----------
-  function ensureBadge() {
-    if (badge && document.documentElement.contains(badge)) return badge;
-    badge = document.createElement('div');
-    badge.id = BADGE_ID;
-    badge.setAttribute('aria-hidden', 'true');
-    badge.innerHTML = 'HoverSave: <b>OFF</b>';
-    badge.addEventListener('click', () => {
-      // Best-effort: ping the background to open the popup.
-      try { chrome.runtime.sendMessage({ type: 'hoversave:openPopup' }); } catch {}
-    });
-    document.documentElement.appendChild(badge);
-    return badge;
-  }
-
-  function updateBadge() {
-    const el = ensureBadge();
-    if (enabled) {
-      el.style.display = 'none';
-    } else {
-      el.style.display = 'flex';
-    }
   }
 
   // ---------- Image detection ----------

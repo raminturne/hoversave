@@ -47,7 +47,10 @@
     <button id="pickFolder" class="btn primary">
       <span class="icon">📁</span> Choose folder…
     </button>
-    <p class="hint">We'll create (or reuse) a <code>HoverSave</code> subfolder inside whatever you pick — no need to make one yourself.</p>
+    <label class="check-row">
+      <input type="checkbox" id="autoSubfolder" checked>
+      Auto-create a <code>HoverSave</code> subfolder inside the picked folder
+    </label>
     <div class="folder-status" id="folderStatus">
       <span class="dot dot-warn"></span>
       <span id="folderText">No folder picked — saving to Chrome's default Downloads.</span>
