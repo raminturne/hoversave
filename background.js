@@ -195,11 +195,15 @@ function buildFileName(url, mimeExt) {
 // ---------- Save logic ----------
 async function ensureHandlePermission(handle) {
   if (!handle || !handle.queryPermission) return false;
-  let perm = await handle.queryPermission({ mode: 'readwrite' });
+  const perm = await handle.queryPermission({ mode: 'readwrite' });
   if (perm === 'granted') return true;
-  // Cannot re-prompt from the background — the user must click the popup action
-  // and re-grant. We surface a clear error.
-  throw new Error('Folder permission lost. Re-open the extension popup and re-pick the folder.');
+  // Cannot re-prompt from the background — the user must click the popup
+  // and re-grant. Surface a clear error so the save falls back to Downloads
+  // and the indicator shows the reason.
+  if (perm === 'prompt') {
+    throw new Error('Folder permission needs renewal. Open the extension popup and re-pick the folder.');
+  }
+  throw new Error('Folder access was blocked. Open the extension popup and re-pick the folder.');
 }
 
 async function uniqueName(handle, base, ext) {
@@ -330,13 +334,25 @@ async function handleMessage(msg, sender) {
     const handle = await idbGet(HANDLE_KEY).catch(() => null);
     if (!handle) return { ok: false, error: 'No folder set' };
     try {
-      const perm = handle.queryPermission
-        ? await handle.queryPermission({ mode: 'readwrite' })
-        : 'granted';
-      if (perm !== 'granted') {
-        return { ok: false, error: 'Folder permission lost — re-pick the folder.' };
+      if (!handle.queryPermission) {
+        return { ok: true, folderName: handle.name || 'folder' };
       }
-      return { ok: true, folderName: handle.name };
+      const perm = await handle.queryPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        return { ok: true, folderName: handle.name };
+      }
+      if (perm === 'prompt') {
+        return {
+          ok: false,
+          error: 'Folder needs permission. Click "Save into my Pictures folder" (or "Choose another folder…") again to re-grant.',
+          permissionState: perm
+        };
+      }
+      return {
+        ok: false,
+        error: 'Folder access was blocked. Re-pick the folder and click "Allow" on the prompt.',
+        permissionState: perm
+      };
     } catch (err) {
       return { ok: false, error: err.message };
     }

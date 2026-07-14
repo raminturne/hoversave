@@ -178,6 +178,26 @@ input[type="text"]:focus {
   line-height: 1.4;
 }
 
+.hint-windows {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  background: rgba(251, 191, 36, 0.08);
+  border-left: 2px solid var(--warn);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.hint-windows code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+  color: var(--text);
+}
+
 kbd {
   display: inline-block;
   background: rgba(255, 255, 255, 0.08);

@@ -278,7 +278,13 @@
       });
       if (result && result.ok) {
         const where = result.method === 'folder' ? 'Folder' : 'Downloads';
-        showIndicator(`✓ Saved to ${escapeHtml(result.fileName || 'image')} (${where})`, 'success');
+        let msg = `✓ Saved to ${escapeHtml(result.fileName || 'image')} (${where})`;
+        // If folder save fell back to Downloads, surface the reason so the
+        // user knows to re-grant permission in the popup.
+        if (result.method === 'downloads' && result.warning) {
+          msg = `⚠ Used Downloads (folder error: ${escapeHtml(result.warning)})`;
+        }
+        showIndicator(msg, result.method === 'folder' ? 'success' : 'normal');
       } else {
         showIndicator(`✗ ${escapeHtml((result && result.error) || 'Save failed')}`, 'error');
       }

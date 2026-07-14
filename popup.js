@@ -130,6 +130,26 @@ async function pickFolder(startIn) {
     const opts = { mode: 'readwrite' };
     if (startIn) opts.startIn = startIn;
     const handle = await window.showDirectoryPicker(opts);
+
+    // showDirectoryPicker only grants SESSION permission. To use the handle
+    // later (after the service worker restarts, across page loads, etc.) we
+    // need PERSISTENT permission. requestPermission upgrades the grant from
+    // session to persistent — without it, the background's queryPermission
+    // returns 'prompt' and the save silently falls back to Downloads.
+    let perm = 'granted';
+    try {
+      if (handle.requestPermission) {
+        perm = await handle.requestPermission({ mode: 'readwrite' });
+      }
+    } catch (e) {
+      console.warn('[hoversave] requestPermission failed:', e);
+    }
+
+    if (perm !== 'granted') {
+      setFolderStatus('bad', '✗ Permission denied. Click the button again and choose "Allow" on the prompt that appears.');
+      return;
+    }
+
     const saveResult = await chrome.runtime.sendMessage({
       type: 'hoversave:saveHandle',
       handle
@@ -140,7 +160,16 @@ async function pickFolder(startIn) {
       setFolderStatus('bad', `✗ ${(saveResult && saveResult.error) || 'Could not save folder'}`);
     }
   } catch (err) {
-    if (err && err.name === 'AbortError') return;
+    if (err && err.name === 'AbortError') {
+      // User cancelled the picker. On Windows, this commonly happens after
+      // Chrome shows the "Can't open this folder because it contains system
+      // files" dialog for the Pictures folder.
+      const tip = startIn === 'pictures'
+        ? 'Cancelled. On Windows the Pictures folder itself is blocked. Create a subfolder (e.g. Pictures\\HoverSave) and pick that instead.'
+        : 'Cancelled.';
+      setFolderStatus('bad', `✗ ${tip}`);
+      return;
+    }
     setFolderStatus('bad', `✗ ${err.message || err}`);
   }
 }

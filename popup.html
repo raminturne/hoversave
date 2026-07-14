@@ -45,11 +45,16 @@
   <section class="card">
     <label>Save folder</label>
     <button id="pickPictures" class="btn primary">
-      <span class="icon">🖼️</span> Use my Pictures folder
+      <span class="icon">🖼️</span> Save into my Pictures folder
     </button>
     <button id="pickCustom" class="btn secondary">
       <span class="icon">📁</span> Choose another folder…
     </button>
+    <p class="hint hint-windows">
+      <strong>Windows tip:</strong> the <code>Pictures</code> folder itself is blocked
+      by the OS ("contains system files"). Create a subfolder there first
+      (e.g. <code>Pictures\HoverSave</code>) and pick <em>that</em> subfolder.
+    </p>
     <div class="folder-status" id="folderStatus">
       <span class="dot dot-warn"></span>
       <span id="folderText">No folder picked — saving to Chrome's default Downloads.</span>
