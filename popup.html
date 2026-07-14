@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HoverSave</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">↓</div>
+      <div>
+        <h1>HoverSave</h1>
+        <p class="tagline">Save images with a hotkey</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="row">
+      <label for="enabled">Extension</label>
+      <label class="switch">
+        <input type="checkbox" id="enabled" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <label for="keyInput">Save hotkey</label>
+    <input type="text" id="keyInput" maxlength="1" placeholder="Press a key" spellcheck="false" autocomplete="off">
+    <p class="hint">Click the box, then press a single key. The default is <kbd>S</kbd>.</p>
+  </section>
+
+  <section class="card">
+    <label>Save folder</label>
+    <button id="pickPictures" class="btn primary">
+      <span class="icon">🖼️</span> Use my Pictures folder
+    </button>
+    <button id="pickCustom" class="btn secondary">
+      <span class="icon">📁</span> Choose another folder…
+    </button>
+    <div class="folder-status" id="folderStatus">
+      <span class="dot dot-warn"></span>
+      <span id="folderText">No folder picked — saving to Chrome's default Downloads.</span>
+    </div>
+    <button id="clearFolder" class="btn tertiary" hidden>Reset to default</button>
+  </section>
+
+  <footer>
+    <p>Hover an image, press <kbd id="footerKey">S</kbd>. Files are named from the source URL with a date stamp to avoid collisions.</p>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

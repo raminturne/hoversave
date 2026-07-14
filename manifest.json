@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "HoverSave - Save Images on Hotkey",
+  "short_name": "HoverSave",
+  "version": "1.0.0",
+  "description": "Hover over any image and press a hotkey to save it to your chosen folder. Pick a folder once, then save images from any page with one keystroke.",
+  "minimum_chrome_version": "120",
+  "permissions": [
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "HoverSave Settings",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
