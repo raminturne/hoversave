@@ -8,48 +8,130 @@ const STORE_NAME = 'handles';
 const HANDLE_KEY = 'directoryHandle';
 
 // ---------- IndexedDB helpers (for the directory handle) ----------
+//
+// The DB can land in a bad state ("Version change transaction was aborted in
+// upgradeneeded event handler") if the extension is reloaded mid-upgrade, if
+// another instance/tab has it open with an older version, or if a previous
+// install left a partial schema. We make openDB self-healing: on failure we
+// delete the DB and re-create it. The user loses the saved folder handle and
+// has to re-pick — but the extension stays usable.
+
 function openDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
+    let req;
+    try {
+      req = indexedDB.open(DB_NAME, DB_VERSION);
+    } catch (e) {
+      reject(e);
+      return;
+    }
+
+    req.onupgradeneeded = (event) => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.objectStore(STORE_NAME);
+      try {
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME);
+        }
+      } catch (e) {
+        console.error('[hoversave] upgradeneeded error:', e);
+        // The transaction will be aborted automatically when we rethrow.
+        throw e;
       }
     };
-    req.onsuccess = () => resolve(req.result);
+
+    req.onblocked = () => {
+      // Another tab/extension has the DB open with an older version.
+      reject(new Error('Database is locked by another tab. Close other HoverSave windows and try again.'));
+    };
+
+    req.onsuccess = () => {
+      const db = req.result;
+      // If another connection tries to upgrade, close ours to let it through.
+      db.onversionchange = () => {
+        try { db.close(); } catch {}
+      };
+      resolve(db);
+    };
+
     req.onerror = () => reject(req.error);
   });
 }
 
+function deleteDB() {
+  return new Promise((resolve) => {
+    let req;
+    try {
+      req = indexedDB.deleteDatabase(DB_NAME);
+    } catch {
+      resolve();
+      return;
+    }
+    req.onsuccess = () => resolve();
+    req.onerror = () => resolve();
+    req.onblocked = () => resolve();
+  });
+}
+
+async function openDBWithRecovery() {
+  try {
+    return await openDB();
+  } catch (err) {
+    const msg = (err && err.message) || String(err);
+    const looksLikeAbort = err && (err.name === 'AbortError' || /abort|versionchange|blocked/i.test(msg));
+    console.warn('[hoversave] openDB failed, attempting reset:', err);
+    if (!looksLikeAbort) throw err;
+    await deleteDB();
+    // Tiny pause to let the delete complete in the browser
+    await new Promise((r) => setTimeout(r, 50));
+    return await openDB();
+  }
+}
+
 async function idbGet(key) {
-  const db = await openDB();
+  const db = await openDBWithRecovery();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const req = tx.objectStore(STORE_NAME).get(key);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    try {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    } catch (e) {
+      reject(e);
+    }
   });
 }
 
 async function idbPut(key, value) {
-  const db = await openDB();
+  const db = await openDBWithRecovery();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const req = tx.objectStore(STORE_NAME).put(value, key);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
+    try {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const req = tx.objectStore(STORE_NAME).put(value, key);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    } catch (e) {
+      reject(e);
+    }
   });
 }
 
 async function idbDelete(key) {
-  const db = await openDB();
+  const db = await openDBWithRecovery();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const req = tx.objectStore(STORE_NAME).delete(key);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
+    try {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const req = tx.objectStore(STORE_NAME).delete(key);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    } catch (e) {
+      reject(e);
+    }
   });
+}
+
+async function resetDB() {
+  await deleteDB();
+  return true;
 }
 
 // ---------- Filename helpers ----------
@@ -229,6 +311,11 @@ async function handleMessage(msg, sender) {
 
   if (msg.type === 'hoversave:clearHandle') {
     await idbDelete(HANDLE_KEY);
+    return { ok: true };
+  }
+
+  if (msg.type === 'hoversave:resetDB') {
+    await resetDB();
     return { ok: true };
   }
 

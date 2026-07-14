@@ -13,7 +13,8 @@ const els = {
   folderStatus: $('folderStatus'),
   folderText: $('folderText'),
   clearFolder: $('clearFolder'),
-  footerKey: $('footerKey')
+  footerKey: $('footerKey'),
+  resetDB: $('resetDB')
 };
 
 let keyListening = false;
@@ -150,6 +151,12 @@ els.pickCustom.addEventListener('click', () => pickFolder());
 els.clearFolder.addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'hoversave:clearHandle' });
   setFolderStatus('idle', "No folder picked — saving to Chrome's default Downloads.");
+});
+
+els.resetDB.addEventListener('click', async () => {
+  if (!confirm('Reset HoverSave storage? You\'ll need to re-pick your save folder, but the hotkey and on/off state will be kept.')) return;
+  await chrome.runtime.sendMessage({ type: 'hoversave:resetDB' });
+  setFolderStatus('idle', "Storage cleared. Pick a folder to start saving there.");
 });
 
 loadSettings();
