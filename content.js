@@ -202,11 +202,31 @@
     }
   }, true);
 
-  // Hotkey: compare the PHYSICAL key code, not the produced character.
+  // Hotkey: match the PHYSICAL key code (e.code), not the produced character.
   // This makes the shortcut work on Farsi, Arabic, Russian, AZERTY, Dvorak,
-  // Colemak, etc. — any layout that has the same physical "S" key position.
+  // Colemak, etc. — any layout where the "S" key is in the same physical
+  // position as on a US QWERTY board. e.code is layout-independent by spec.
+  //
+  // We also fall back to matching the produced character (e.key). That's a
+  // safety net for the rare cases where e.code is unavailable or a non-
+  // standard layout has the "S" label at a different physical position.
   document.addEventListener('keydown', async (e) => {
-    if (!enabled || !currentImage) return;
+    // Always log to console so the user can verify the hotkey is firing and
+    // see what their browser is reporting for e.code / e.key. This costs
+    // ~nothing in practice and makes "why isn't this working?" a one-liner.
+    try {
+      console.debug('[hoversave] keydown', {
+        code: e.code,
+        key: e.key,
+        saveKey, saveKeyCode,
+        hasImage: !!currentImage,
+        enabled,
+        activeTag: document.activeElement && document.activeElement.tagName
+      });
+    } catch {}
+
+    if (!enabled) return;
+    if (!currentImage) return;
 
     // Don't steal keystrokes from form fields where the user is typing.
     const a = document.activeElement;
@@ -214,15 +234,33 @@
       return;
     }
 
+    // Ignore key events from an IME composition in progress (e.g. the user
+    // is still typing a composed character).
+    if (e.isComposing || e.keyCode === 229) return;
+
+    // No plain modifier keys for the save hotkey — the global Alt+Shift+S
+    // is handled by chrome.commands in the background, not here.
     if (e.ctrlKey || e.altKey || e.metaKey) return;
 
-    // e.code is layout-independent: e.g. physical "S" is always "KeyS".
-    // We also accept the numpad digit code (Numpad0..Numpad9) for users
-    // who bound the hotkey to a digit.
-    const code = e.code;
-    const isMatch = code === saveKeyCode
-      || (/^Digit\d$/.test(saveKeyCode) && code === 'Numpad' + saveKeyCode.slice(5));
-    if (!isMatch) return;
+    // Primary match: physical key position (e.code). "KeyS" on Farsi, Arabic,
+    // Russian, AZERTY, Dvorak, Colemak… all give the same e.code for the
+    // physical S key.
+    let matchKind = null;
+    if (e.code === saveKeyCode) {
+      matchKind = 'code';
+    } else if (/^Digit\d$/.test(saveKeyCode) && e.code === 'Numpad' + saveKeyCode.slice(5)) {
+      // Allow numpad digits as a sibling of the top-row digits.
+      matchKind = 'numpad';
+    } else if (typeof e.key === 'string' && e.key.length === 1) {
+      // Fallback: the produced character. This catches:
+      //   - hotkeys set with the produced character on the same layout
+      //   - odd cases where e.code isn't what we expect
+      const k = e.key.toLowerCase();
+      const saved = (saveKey || '').toLowerCase();
+      if (k === saved) matchKind = 'key';
+    }
+
+    if (!matchKind) return;
 
     e.preventDefault();
     e.stopPropagation();

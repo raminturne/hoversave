@@ -51,18 +51,50 @@
       border-radius: 6px;
       font-size: 14px;
     }
-    code {
+    code, kbd {
       background: #eee;
       padding: 1px 6px;
       border-radius: 3px;
       font-family: ui-monospace, "SF Mono", Menlo, monospace;
       font-size: 13px;
     }
+    .keyprobe {
+      position: fixed;
+      right: 16px;
+      top: 16px;
+      padding: 10px 14px;
+      background: #111;
+      color: #fff;
+      border-radius: 8px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      z-index: 9999;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      min-width: 180px;
+    }
+    .keyprobe .label { color: #999; }
+    .keyprobe .v { color: #4ade80; font-weight: 600; }
+    .keyprobe .bad { color: #f87171; }
   </style>
 </head>
 <body>
+
+  <div class="keyprobe" id="keyprobe">
+    <div><span class="label">e.code</span>  <span id="kp-code" class="v">—</span></div>
+    <div><span class="label">e.key</span>   <span id="kp-key" class="v">—</span></div>
+    <div><span class="label">layout</span>  <span id="kp-lang" class="v">—</span></div>
+    <div><span class="label">match</span>   <span id="kp-match" class="bad">—</span></div>
+  </div>
+
   <h1>HoverSave — test page</h1>
-  <p class="lead">Hover an image, then press your configured hotkey (default <code>S</code>) to save it.</p>
+  <p class="lead">Hover an image, then press your configured hotkey (default <kbd>S</kbd>) to save it.</p>
+
+  <p>
+    Switch your keyboard to <strong>Farsi</strong> (or any non-English layout), then press the physical
+    <kbd>S</kbd> key. The probe (top-right) shows what your browser reports. Hover an image first so
+    HoverSave is armed.
+  </p>
 
   <div class="grid">
     <div class="tile">
@@ -87,5 +119,23 @@
     <strong>Tip:</strong> open the extension popup once to set your save folder (or accept the default — Chrome's Downloads).
     Then come back here, hover any image, and press your key. A small floating indicator confirms the save.
   </p>
+
+  <script>
+    // Tiny key-probe so the user can verify their keyboard layout maps
+    // physical S -> e.code "KeyS". If it doesn't, we know it's a
+    // non-standard layout.
+    const elCode = document.getElementById('kp-code');
+    const elKey = document.getElementById('kp-key');
+    const elLang = document.getElementById('kp-lang');
+    const elMatch = document.getElementById('kp-match');
+    document.addEventListener('keydown', (e) => {
+      elCode.textContent = e.code;
+      elKey.textContent = e.key;
+      elLang.textContent = (navigator.language || '?') + ' / ' + (navigator.languages || []).join(',');
+      const isS = e.code === 'KeyS';
+      elMatch.textContent = isS ? 'physical S ✓' : 'not S';
+      elMatch.className = isS ? 'v' : 'bad';
+    });
+  </script>
 </body>
 </html>

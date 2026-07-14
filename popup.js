@@ -21,10 +21,16 @@ let keyListening = false;
 // Map a physical KeyboardEvent.code to a single character that we can store
 // and later re-map on the page. Layout-independent — pressing the physical
 // "S" key always gives "KeyS" regardless of Farsi / Arabic / Russian etc.
-function codeToKeyChar(code) {
+//
+// If e.code is missing or non-standard, we fall back to the produced
+// character (e.key). That keeps the popup usable on exotic keyboards.
+function codeToKeyChar(code, key) {
   if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
   if (/^Digit\d$/.test(code)) return code.slice(5);
   if (/^Numpad\d$/.test(code)) return code.slice(6);
+  if (typeof key === 'string' && key.length === 1 && /^[a-zA-Z0-9]$/.test(key)) {
+    return key.toLowerCase();
+  }
   return null;
 }
 
@@ -110,7 +116,7 @@ els.keyInput.addEventListener('keydown', async (e) => {
     els.keyInput.blur();
     return;
   }
-  const captured = codeToKeyChar(e.code);
+  const captured = codeToKeyChar(e.code, e.key);
   if (!captured) return; // unsupported key
   await chrome.storage.sync.set({ saveKey: captured });
   els.keyInput.value = captured.toUpperCase();
