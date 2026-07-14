@@ -17,20 +17,29 @@
     </div>
   </header>
 
-  <section class="card">
-    <div class="row">
-      <label for="enabled">Extension</label>
-      <label class="switch">
+  <section class="card status-card is-on" id="statusCard">
+    <div class="status-row">
+      <div class="status-left">
+        <span class="status-dot dot-on" id="statusDot"></span>
+        <div>
+          <div class="status-title" id="statusText">Active</div>
+          <div class="status-sub">Press <kbd id="footerKey">S</kbd> while hovering an image</div>
+        </div>
+      </div>
+      <label class="switch" title="Turn the extension on or off">
         <input type="checkbox" id="enabled" checked>
         <span class="slider"></span>
       </label>
+    </div>
+    <div class="status-actions">
+      <span class="status-hint">Tip: <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> toggles on/off from anywhere.</span>
     </div>
   </section>
 
   <section class="card">
     <label for="keyInput">Save hotkey</label>
     <input type="text" id="keyInput" maxlength="1" placeholder="Press a key" spellcheck="false" autocomplete="off">
-    <p class="hint">Click the box, then press a single key. The default is <kbd>S</kbd>.</p>
+    <p class="hint">Click the box, then press a key. Works on any keyboard layout (English, Farsi, Arabic, etc.).</p>
   </section>
 
   <section class="card">
@@ -49,7 +58,7 @@
   </section>
 
   <footer>
-    <p>Hover an image, press <kbd id="footerKey">S</kbd>. Files are named from the source URL with a date stamp to avoid collisions.</p>
+    <p>Hover any image on any page and press your key. Files keep their original extension and get a date stamp on collision.</p>
   </footer>
 
   <script src="popup.js"></script>

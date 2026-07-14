@@ -73,6 +73,73 @@ h1 {
   justify-content: space-between;
 }
 
+/* On/Off status card */
+.status-card {
+  padding: 12px 14px;
+  border-left: 3px solid var(--good);
+  transition: border-color 0.18s, background 0.18s;
+}
+
+.status-card.is-off {
+  border-left-color: var(--warn);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.05), var(--card));
+}
+
+.status-card.is-on {
+  border-left-color: var(--good);
+  background: linear-gradient(180deg, rgba(74, 222, 128, 0.04), var(--card));
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.04);
+}
+
+.dot-on { background: var(--good); box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.18); }
+.dot-off { background: var(--warn); box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.18); }
+
+.status-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.status-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.status-actions {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.status-hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
 label {
   display: block;
   font-size: 12px;

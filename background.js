@@ -268,3 +268,23 @@ chrome.runtime.onInstalled.addListener(() => {
     if (Object.keys(updates).length) chrome.storage.sync.set(updates);
   });
 });
+
+// ---------- Global keyboard shortcut (chrome.commands) ----------
+// The user can rebind this at chrome://extensions/shortcuts.
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === 'toggle-enabled') {
+    const data = await chrome.storage.sync.get(['enabled']);
+    const next = !(data.enabled !== false); // default true
+    await chrome.storage.sync.set({ enabled: next });
+    // Visual ack: a transient badge change on the action icon is the only
+    // thing a service worker can show. The content script's "OFF" badge will
+    // update automatically because it listens to chrome.storage.onChanged.
+    try {
+      await chrome.action.setBadgeText({ text: next ? '' : 'OFF' });
+      await chrome.action.setBadgeBackgroundColor({ color: '#fbbf24' });
+      if (!next) {
+        setTimeout(() => chrome.action.setBadgeText({ text: '' }).catch(() => {}), 1500);
+      }
+    } catch {}
+  }
+});

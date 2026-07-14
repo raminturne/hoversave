@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "HoverSave - Save Images on Hotkey",
   "short_name": "HoverSave",
-  "version": "1.0.0",
-  "description": "Hover over any image and press a hotkey to save it to your chosen folder. Pick a folder once, then save images from any page with one keystroke.",
+  "version": "1.1.0",
+  "description": "Hover over any image and press a hotkey to save it to your chosen folder. Works on any keyboard layout (Farsi, Arabic, English, etc.). Pick a folder once, save images from any page with one keystroke.",
   "minimum_chrome_version": "120",
   "permissions": [
     "storage",
@@ -38,5 +38,14 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "commands": {
+    "toggle-enabled": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Alt+Shift+S"
+      },
+      "description": "Turn HoverSave on or off from anywhere"
+    }
   }
 }

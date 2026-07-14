@@ -3,7 +3,13 @@
 Hover any image on any page and press a hotkey to save it to your chosen folder.
 No right-click, no "Save image as…", no extra tabs.
 
-- **Hotkey**: configurable single key (default `S`).
+- **Hotkey**: configurable single key (default `S`). **Layout-independent** —
+  the hotkey matches the physical key position, so it works on Farsi, Arabic,
+  Russian, AZERTY, Dvorak, Colemak, etc. (uses `event.code` under the hood).
+- **On / off**: a status card in the popup with a clear "Active" / "Paused"
+  indicator. When off, a small floating "OFF" badge appears in the bottom-right
+  of every page so you know why your key isn't saving anything. Toggle globally
+  with **Alt + Shift + S** (rebindable at `chrome://extensions/shortcuts`).
 - **Save folder**: pick a folder once, the extension writes images straight to it.
   - The popup has a **"Use my Pictures folder"** button that opens the system picker
     starting in your Pictures library.
@@ -48,6 +54,11 @@ hoversave-extension/
 
 - `content.js` listens for `mouseover` on every element, walks up to the
   nearest `<img>` or an element with a `background-image`, and shows a tooltip.
+- The hotkey listener uses **`event.code`** (e.g. `KeyS`, `Digit5`) instead of
+  `event.key`. This is the only way to be layout-independent: on a Farsi
+  keyboard the physical "S" key produces `"س"` (`event.key = "س"`), but
+  `event.code` is still `"KeyS"`. The popup also captures by `code` so the
+  hotkey you set is always the physical key you intended.
 - On the configured key, it sends `{type: 'hoversave:save', url, …}` to the
   service worker.
 - `background.js` stores a `FileSystemDirectoryHandle` in IndexedDB (key
@@ -60,6 +71,9 @@ hoversave-extension/
   4. Writes via `createWritable()`.
 - If no folder is configured (or permission was lost), it falls back to
   `chrome.downloads.download()` → Chrome's default Downloads.
+- `chrome.commands.onCommand` listens for the global toggle shortcut and
+  flips the `enabled` flag in `chrome.storage.sync`; both the popup and
+  the content script react via `chrome.storage.onChanged`.
 
 ## Notes / edge cases
 

@@ -4,6 +4,9 @@ const $ = (id) => document.getElementById(id);
 
 const els = {
   enabled: $('enabled'),
+  statusText: $('statusText'),
+  statusCard: $('statusCard'),
+  statusDot: $('statusDot'),
   keyInput: $('keyInput'),
   pickPictures: $('pickPictures'),
   pickCustom: $('pickCustom'),
@@ -14,6 +17,16 @@ const els = {
 };
 
 let keyListening = false;
+
+// Map a physical KeyboardEvent.code to a single character that we can store
+// and later re-map on the page. Layout-independent — pressing the physical
+// "S" key always gives "KeyS" regardless of Farsi / Arabic / Russian etc.
+function codeToKeyChar(code) {
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
+  if (/^Digit\d$/.test(code)) return code.slice(5);
+  if (/^Numpad\d$/.test(code)) return code.slice(6);
+  return null;
+}
 
 function setFolderStatus(state, text) {
   els.folderStatus.classList.remove('is-good', 'is-bad');
@@ -32,21 +45,36 @@ function setFolderStatus(state, text) {
   els.clearFolder.hidden = state === 'idle';
 }
 
+function setExtensionStatus(enabled) {
+  if (enabled) {
+    els.statusText.textContent = 'Active';
+    els.statusCard.classList.remove('is-off');
+    els.statusCard.classList.add('is-on');
+    els.statusDot.className = 'status-dot dot-on';
+  } else {
+    els.statusText.textContent = 'Paused';
+    els.statusCard.classList.remove('is-on');
+    els.statusCard.classList.add('is-off');
+    els.statusDot.className = 'status-dot dot-off';
+  }
+}
+
 async function loadSettings() {
   const data = await chrome.storage.sync.get(['saveKey', 'enabled']);
   const key = (data.saveKey || 's').toUpperCase();
   els.keyInput.value = key;
   els.footerKey.textContent = key;
-  els.enabled.checked = data.enabled !== false;
+  const enabled = data.enabled !== false;
+  els.enabled.checked = enabled;
+  setExtensionStatus(enabled);
 
   const status = await chrome.runtime.sendMessage({ type: 'hoversave:getStatus' });
   if (status && status.ok && status.hasFolder) {
     setFolderStatus('good', `✓ Saving to "${status.folderName || 'folder'}"`);
   } else {
-    setFolderStatus('idle', 'No folder picked — saving to Chrome\'s default Downloads.');
+    setFolderStatus('idle', "No folder picked — saving to Chrome's default Downloads.");
   }
 
-  // Verify the handle is still accessible
   if (status && status.ok && status.hasFolder) {
     const verify = await chrome.runtime.sendMessage({ type: 'hoversave:verifyHandle' });
     if (!verify.ok) {
@@ -56,7 +84,9 @@ async function loadSettings() {
 }
 
 els.enabled.addEventListener('change', async () => {
-  await chrome.storage.sync.set({ enabled: els.enabled.checked });
+  const next = els.enabled.checked;
+  await chrome.storage.sync.set({ enabled: next });
+  setExtensionStatus(next);
 });
 
 els.keyInput.addEventListener('focus', () => {
@@ -71,15 +101,20 @@ els.keyInput.addEventListener('blur', () => {
   loadSettings();
 });
 
+// Capture the next physical key press — layout-independent.
 els.keyInput.addEventListener('keydown', async (e) => {
   if (!keyListening) return;
   e.preventDefault();
-  if (typeof e.key !== 'string' || e.key.length !== 1) return;
-  const k = e.key.toLowerCase();
-  if (!/^[a-z0-9]$/.test(k)) return;
-  await chrome.storage.sync.set({ saveKey: k });
-  els.keyInput.value = k.toUpperCase();
-  els.footerKey.textContent = k.toUpperCase();
+  // Allow Escape to cancel
+  if (e.key === 'Escape') {
+    els.keyInput.blur();
+    return;
+  }
+  const captured = codeToKeyChar(e.code);
+  if (!captured) return; // unsupported key
+  await chrome.storage.sync.set({ saveKey: captured });
+  els.keyInput.value = captured.toUpperCase();
+  els.footerKey.textContent = captured.toUpperCase();
   els.keyInput.blur();
 });
 
@@ -98,7 +133,7 @@ async function pickFolder(startIn) {
       setFolderStatus('bad', `✗ ${(saveResult && saveResult.error) || 'Could not save folder'}`);
     }
   } catch (err) {
-    if (err && err.name === 'AbortError') return; // user cancelled
+    if (err && err.name === 'AbortError') return;
     setFolderStatus('bad', `✗ ${err.message || err}`);
   }
 }
@@ -108,7 +143,7 @@ els.pickCustom.addEventListener('click', () => pickFolder());
 
 els.clearFolder.addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'hoversave:clearHandle' });
-  setFolderStatus('idle', 'No folder picked — saving to Chrome\'s default Downloads.');
+  setFolderStatus('idle', "No folder picked — saving to Chrome's default Downloads.");
 });
 
 loadSettings();
