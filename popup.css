@@ -178,18 +178,7 @@ input[type="text"]:focus {
   line-height: 1.4;
 }
 
-.hint-windows {
-  margin: 10px 0 0;
-  padding: 8px 10px;
-  background: rgba(251, 191, 36, 0.08);
-  border-left: 2px solid var(--warn);
-  border-radius: 4px;
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.hint-windows code {
+.hint code {
   background: rgba(255, 255, 255, 0.08);
   padding: 1px 5px;
   border-radius: 3px;
@@ -197,6 +186,50 @@ input[type="text"]:focus {
   font-size: 10px;
   color: var(--text);
 }
+
+/* Folder-tip modal — shown before the folder picker, unless dismissed */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.modal-overlay[hidden] { display: none; }
+
+.modal-box {
+  width: 100%;
+  max-width: 300px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.modal-box .hint:first-child { margin-top: 0; }
+
+.modal-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.modal-actions .btn { margin: 0; }
 
 kbd {
   display: inline-block;
@@ -266,6 +299,27 @@ kbd {
   line-height: 1.4;
 }
 
+.folder-status #folderText {
+  flex: 1;
+}
+
+.btn-fix {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 5px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--bad);
+  background: rgba(248, 113, 113, 0.12);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-fix:hover {
+  background: rgba(248, 113, 113, 0.2);
+}
+
 .folder-status.is-good {
   background: rgba(74, 222, 128, 0.08);
   color: var(--good);
@@ -296,6 +350,13 @@ footer p {
   font-size: 11px;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.ver-tag {
+  margin-top: 6px !important;
+  text-align: right;
+  font-size: 10px !important;
+  opacity: 0.5;
 }
 
 /* Toggle switch */

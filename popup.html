@@ -44,29 +44,42 @@
 
   <section class="card">
     <label>Save folder</label>
-    <button id="pickPictures" class="btn primary">
-      <span class="icon">🖼️</span> Save into my Pictures folder
+    <button id="pickFolder" class="btn primary">
+      <span class="icon">📁</span> Choose folder…
     </button>
-    <button id="pickCustom" class="btn secondary">
-      <span class="icon">📁</span> Choose another folder…
-    </button>
-    <p class="hint hint-windows">
-      <strong>Windows tip:</strong> the <code>Pictures</code> folder itself is blocked
-      by the OS ("contains system files"). Create a subfolder there first
-      (e.g. <code>Pictures\HoverSave</code>) and pick <em>that</em> subfolder.
-    </p>
+    <p class="hint">We'll create (or reuse) a <code>HoverSave</code> subfolder inside whatever you pick — no need to make one yourself.</p>
     <div class="folder-status" id="folderStatus">
       <span class="dot dot-warn"></span>
       <span id="folderText">No folder picked — saving to Chrome's default Downloads.</span>
+      <button id="fixAccess" class="btn-fix" hidden title="Re-grant access to the saved folder">Fix access</button>
     </div>
     <button id="clearFolder" class="btn tertiary" hidden>Reset to default</button>
   </section>
 
   <footer>
-    <p>Hover any image on any page and press your key. Files keep their original extension and get a date stamp on collision.</p>
-    <button id="resetDB" class="btn tertiary" title="If saving fails repeatedly, nuke the extension's local storage and start fresh.">Reset extension storage…</button>
+    <p>Hover any image on any page and press your key. Files keep their original name and extension.</p>
+    <p class="ver-tag" id="verTag"></p>
   </footer>
 
-  <script src="popup.js"></script>
+  <div class="modal-overlay" id="folderTipOverlay" hidden>
+    <div class="modal-box">
+      <p class="hint">
+        <strong>EN:</strong> Windows won't let Chrome select <code>Desktop</code> (or <code>Documents</code>/<code>Downloads</code>/<code>Pictures</code>/<code>Music</code>/<code>Videos</code>) directly. In the dialog, open that folder, click <strong>New folder</strong>, name it (e.g. <code>HoverSave</code>), then select the new subfolder.
+      </p>
+      <p class="hint" dir="rtl">
+        <strong>فارسی:</strong> ویندوز اجازه نمی‌ده Chrome مستقیماً پوشه‌ی Desktop (یا Documents/Downloads/Pictures/Music/Videos) رو انتخاب کنه. توی همون دیالوگ، اول اون پوشه رو باز کن، دکمه‌ی <strong>New folder</strong> رو بزن، یه اسم بذار (مثلاً HoverSave)، و همون زیرپوشه‌ی جدید رو انتخاب کن.
+      </p>
+      <label class="modal-check">
+        <input type="checkbox" id="dontShowTip">
+        Don't show this again / دیگه نشونش نده
+      </label>
+      <div class="modal-actions">
+        <button id="tipCancel" class="btn tertiary">Cancel</button>
+        <button id="tipContinue" class="btn primary">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

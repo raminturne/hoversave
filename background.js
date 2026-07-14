@@ -1,138 +1,12 @@
 // background.js — service worker. Receives save requests, fetches the image,
 // and either writes it to the user-chosen folder (File System Access API) or
 // falls back to chrome.downloads (which lands in Chrome's default Downloads).
-
-const DB_NAME = 'HoverSaveDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'handles';
-const HANDLE_KEY = 'directoryHandle';
-
-// ---------- IndexedDB helpers (for the directory handle) ----------
 //
-// The DB can land in a bad state ("Version change transaction was aborted in
-// upgradeneeded event handler") if the extension is reloaded mid-upgrade, if
-// another instance/tab has it open with an older version, or if a previous
-// install left a partial schema. We make openDB self-healing: on failure we
-// delete the DB and re-create it. The user loses the saved folder handle and
-// has to re-pick — but the extension stays usable.
+// The directory handle itself is written/read straight from IndexedDB (see
+// idb-shared.js) — it must never be relayed through chrome.runtime.sendMessage,
+// which strips FileSystemHandle objects down to lifeless plain objects.
 
-function openDB() {
-  return new Promise((resolve, reject) => {
-    let req;
-    try {
-      req = indexedDB.open(DB_NAME, DB_VERSION);
-    } catch (e) {
-      reject(e);
-      return;
-    }
-
-    req.onupgradeneeded = (event) => {
-      const db = req.result;
-      try {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME);
-        }
-      } catch (e) {
-        console.error('[hoversave] upgradeneeded error:', e);
-        // The transaction will be aborted automatically when we rethrow.
-        throw e;
-      }
-    };
-
-    req.onblocked = () => {
-      // Another tab/extension has the DB open with an older version.
-      reject(new Error('Database is locked by another tab. Close other HoverSave windows and try again.'));
-    };
-
-    req.onsuccess = () => {
-      const db = req.result;
-      // If another connection tries to upgrade, close ours to let it through.
-      db.onversionchange = () => {
-        try { db.close(); } catch {}
-      };
-      resolve(db);
-    };
-
-    req.onerror = () => reject(req.error);
-  });
-}
-
-function deleteDB() {
-  return new Promise((resolve) => {
-    let req;
-    try {
-      req = indexedDB.deleteDatabase(DB_NAME);
-    } catch {
-      resolve();
-      return;
-    }
-    req.onsuccess = () => resolve();
-    req.onerror = () => resolve();
-    req.onblocked = () => resolve();
-  });
-}
-
-async function openDBWithRecovery() {
-  try {
-    return await openDB();
-  } catch (err) {
-    const msg = (err && err.message) || String(err);
-    const looksLikeAbort = err && (err.name === 'AbortError' || /abort|versionchange|blocked/i.test(msg));
-    console.warn('[hoversave] openDB failed, attempting reset:', err);
-    if (!looksLikeAbort) throw err;
-    await deleteDB();
-    // Tiny pause to let the delete complete in the browser
-    await new Promise((r) => setTimeout(r, 50));
-    return await openDB();
-  }
-}
-
-async function idbGet(key) {
-  const db = await openDBWithRecovery();
-  return new Promise((resolve, reject) => {
-    try {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const req = tx.objectStore(STORE_NAME).get(key);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
-
-async function idbPut(key, value) {
-  const db = await openDBWithRecovery();
-  return new Promise((resolve, reject) => {
-    try {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const req = tx.objectStore(STORE_NAME).put(value, key);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
-
-async function idbDelete(key) {
-  const db = await openDBWithRecovery();
-  return new Promise((resolve, reject) => {
-    try {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const req = tx.objectStore(STORE_NAME).delete(key);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
-
-async function resetDB() {
-  await deleteDB();
-  return true;
-}
+import { HANDLE_KEY, idbGet, idbPut, idbDelete } from './idb-shared.js';
 
 // ---------- Filename helpers ----------
 const EXT_RE = /\.(jpe?g|png|gif|webp|bmp|svg|avif|ico|tiff?|heic|heif|jfif)(\?|#|$)/i;
@@ -194,7 +68,9 @@ function buildFileName(url, mimeExt) {
 
 // ---------- Save logic ----------
 async function ensureHandlePermission(handle) {
-  if (!handle || !handle.queryPermission) return false;
+  if (!handle || typeof handle.queryPermission !== 'function') {
+    throw new Error('Saved folder reference is invalid. Open the extension popup and re-pick the folder.');
+  }
   const perm = await handle.queryPermission({ mode: 'readwrite' });
   if (perm === 'granted') return true;
   // Cannot re-prompt from the background — the user must click the popup
@@ -249,7 +125,7 @@ async function saveToFolder(handle, url) {
 
 async function saveViaDownloads(url) {
   const { base, ext } = buildFileName(url, null);
-  const fileName = `${base}_${timestampSuffix()}.${ext}`;
+  const fileName = `${base}.${ext}`;
   const id = await chrome.downloads.download({
     url,
     filename: fileName,
@@ -297,29 +173,8 @@ async function handleMessage(msg, sender) {
     }
   }
 
-  if (msg.type === 'hoversave:saveHandle') {
-    if (!msg.handle) return { ok: false, error: 'No handle provided' };
-    // Make sure we can write
-    let perm = 'granted';
-    try {
-      if (msg.handle.queryPermission) {
-        perm = await msg.handle.queryPermission({ mode: 'readwrite' });
-      }
-    } catch {}
-    if (perm !== 'granted') {
-      return { ok: false, error: 'Permission not granted' };
-    }
-    await idbPut(HANDLE_KEY, msg.handle);
-    return { ok: true, name: msg.handle.name || 'folder' };
-  }
-
   if (msg.type === 'hoversave:clearHandle') {
     await idbDelete(HANDLE_KEY);
-    return { ok: true };
-  }
-
-  if (msg.type === 'hoversave:resetDB') {
-    await resetDB();
     return { ok: true };
   }
 
@@ -334,8 +189,12 @@ async function handleMessage(msg, sender) {
     const handle = await idbGet(HANDLE_KEY).catch(() => null);
     if (!handle) return { ok: false, error: 'No folder set' };
     try {
-      if (!handle.queryPermission) {
-        return { ok: true, folderName: handle.name || 'folder' };
+      if (typeof handle.queryPermission !== 'function') {
+        return {
+          ok: false,
+          error: 'Saved folder reference is invalid (corrupted or from an old version). Re-pick the folder.',
+          permissionState: 'invalid'
+        };
       }
       const perm = await handle.queryPermission({ mode: 'readwrite' });
       if (perm === 'granted') {
